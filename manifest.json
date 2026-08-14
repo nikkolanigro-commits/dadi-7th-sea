@@ -1,15 +1,1 @@
-{
-  "name": "Dadi & Raise 7th Sea",
-  "version": "1.0.0",
-  "manifest_version": 1,
-  "author": "Te",
-  "description": "Tira qualsiasi tipo di dado e calcola automaticamente i Raise di 7th Sea (7th Sea).",
-  "icon": "/icon.svg",
-  "action": {
-    "title": "Dadi & Raise",
-    "icon": "/icon.svg",
-    "popover": "/",
-    "height": 640,
-    "width": 420
-  }
-}
+{ "name": "Dadi & Raise 7th Sea", "version": "1.0.0", "manifest_version": 1, "author": "Te", "description": "Tira qualsiasi tipo di dado e calcola automaticamente i Raise di 7th Sea (7th Sea).", "icon": "icon.svg", "action": { "title": "Dadi & Raise", "icon": "icon.svg", "popover": "index.html", "height": 640, "width": 420 } }
