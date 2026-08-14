@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dadi & Raise 7th Sea</title>
+<style>
+  :root{
+    --navy-deep:#0E2A3F;
+    --navy-mid:#16405B;
+    --brass:#C9A24B;
+    --brass-bright:#E3C26F;
+    --parchment:#EDE3D0;
+    --ink:#0A1B27;
+    --red-wax:#8C3B2E;
+    --green-ok:#4C7A5E;
+    font-size:15px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    background:transparent;
+    color:var(--parchment);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  body{
+    background:
+      radial-gradient(1200px 400px at 50% -10%, rgba(201,162,75,0.10), transparent 60%),
+      var(--navy-deep);
+    min-height:100vh;
+    padding:18px 18px 26px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:1px solid rgba(201,162,75,0.35);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  header h1{
+    font-size:1.15rem;
+    letter-spacing:0.03em;
+    margin:0;
+    color:var(--brass-bright);
+    font-weight:700;
+  }
+  header span{
+    font-size:0.68rem;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    color:rgba(237,227,208,0.55);
+    font-family:Arial,Helvetica,sans-serif;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    border:1px solid rgba(201,162,75,0.25);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+
+  .row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .field{
+    flex:1;
+  }
+  label{
+    display:block;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.65rem;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--brass);
+    margin-bottom:5px;
+  }
+  select, input[type=number]{
+    width:100%;
+    background:var(--navy-mid);
+    border:1px solid rgba(201,162,75,0.4);
+    color:var(--parchment);
+    border-radius:6px;
+    padding:8px 9px;
+    font-size:0.95rem;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  select:focus, input:focus{
+    outline:2px solid var(--brass-bright);
+    outline-offset:1px;
+  }
+
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .stepper button{
+    width:30px;
+    height:34px;
+    border-radius:6px;
+    border:1px solid rgba(201,162,75,0.4);
+    background:var(--navy-mid);
+    color:var(--brass-bright);
+    font-size:1rem;
+    cursor:pointer;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .stepper button:hover{ background:#1c4f6f; }
+  .stepper input{ text-align:center; }
+
+  .roll-btn{
+    width:100%;
+    margin-top:14px;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    background:linear-gradient(180deg, var(--brass-bright), var(--brass));
+    color:var(--ink);
+    font-weight:700;
+    font-size:1rem;
+    letter-spacing:0.03em;
+    cursor:pointer;
+    font-family:Arial,Helvetica,sans-serif;
+    box-shadow:0 2px 0 rgba(0,0,0,0.25);
+  }
+  .roll-btn:active{ transform:translateY(1px); box-shadow:none; }
+  .roll-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  .results-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:10px;
+  }
+  .results-head h2{
+    font-size:0.9rem;
+    margin:0;
+    color:var(--brass-bright);
+    font-weight:700;
+  }
+  .sum{
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.8rem;
+    color:rgba(237,227,208,0.75);
+  }
+  .sum b{ color:var(--brass-bright); font-size:1rem; }
+
+  .dice-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .die{
+    width:38px;
+    height:38px;
+    border-radius:8px;
+    background:var(--navy-mid);
+    border:1px solid rgba(201,162,75,0.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Arial,Helvetica,sans-serif;
+    font-weight:700;
+    font-size:0.95rem;
+    color:var(--parchment);
+  }
+  .die.max{
+    border-color:var(--brass-bright);
+    background:#1c4f6f;
+    color:var(--brass-bright);
+  }
+  .die.used{
+    opacity:0.55;
+  }
+
+  .empty-note{
+    font-size:0.82rem;
+    color:rgba(237,227,208,0.5);
+    font-style:italic;
+  }
+
+  .raise{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 8px;
+    border-radius:7px;
+    background:rgba(76,122,94,0.15);
+    border:1px solid rgba(76,122,94,0.5);
+    margin-bottom:7px;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .raise .label{
+    font-weight:700;
+    color:var(--green-ok);
+    font-size:0.78rem;
+    min-width:58px;
+  }
+  .raise .dice{
+    display:flex;
+    gap:5px;
+    flex-wrap:wrap;
+    flex:1;
+  }
+  .raise .chip{
+    background:var(--green-ok);
+    color:#fff;
+    border-radius:5px;
+    padding:2px 7px;
+    font-size:0.8rem;
+    font-weight:700;
+  }
+  .raise .total{
+    font-size:0.75rem;
+    color:rgba(237,227,208,0.7);
+  }
+
+  .leftover{
+    margin-top:6px;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.78rem;
+    color:rgba(237,227,208,0.55);
+  }
+  .leftover .chip{
+    display:inline-flex;
+    background:var(--navy-mid);
+    border:1px solid rgba(201,162,75,0.35);
+    border-radius:5px;
+    padding:2px 6px;
+    margin:0 3px;
+    font-weight:700;
+  }
+
+  .raise-total{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed rgba(201,162,75,0.3);
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.85rem;
+    display:flex;
+    justify-content:space-between;
+  }
+  .raise-total b{
+    color:var(--brass-bright);
+    font-size:1.05rem;
+  }
+
+  .hint{
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.72rem;
+    color:rgba(237,227,208,0.45);
+    margin-top:8px;
+    line-height:1.4;
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>⚓ Dadi &amp; Raise</h1>
+    <span>7th Sea toolkit</span>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="dieType">Tipo di dado</label>
+        <select id="dieType">
+          <option value="4">d4</option>
+          <option value="6">d6</option>
+          <option value="8">d8</option>
+          <option value="10" selected>d10 (7th Sea)</option>
+          <option value="12">d12</option>
+          <option value="20">d20</option>
+          <option value="100">d100</option>
+          <option value="custom">Personalizzato…</option>
+        </select>
+      </div>
+      <div class="field" id="customFacesField" style="display:none;">
+        <label for="customFaces">N. facce</label>
+        <input type="number" id="customFaces" min="2" max="1000" value="10">
+      </div>
+      <div class="field" style="flex:0 0 130px;">
+        <label for="diceCount">Quanti dadi</label>
+        <div class="stepper">
+          <button type="button" id="minus">−</button>
+          <input type="number" id="diceCount" min="1" max="30" value="5">
+          <button type="button" id="plus">+</button>
+        </div>
+      </div>
+    </div>
+    <button class="roll-btn" id="rollBtn">🎲 Tira i dadi</button>
+  </div>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <div class="results-head">
+      <h2>Risultato</h2>
+      <div class="sum">Somma totale: <b id="sumTotal">0</b></div>
+    </div>
+    <div class="dice-grid" id="diceGrid"></div>
+  </div>
+
+  <div class="panel" id="raisePanel" style="display:none;">
+    <div class="results-head">
+      <h2>Raise (gruppi da 10+)</h2>
+    </div>
+    <div id="raiseList"></div>
+    <div class="leftover" id="leftoverNote"></div>
+    <div class="raise-total">
+      <span>Raise ottenuti</span>
+      <b id="raiseCount">0</b>
+    </div>
+    <div class="hint">
+      Metodo: si ordinano i dadi e si abbina il più alto rimasto ai dadi più bassi necessari finché il gruppo non raggiunge almeno 10. I dadi avanzati non bastano a formare un altro Raise.
+    </div>
+  </div>
+
+<script>
+  const dieType = document.getElementById('dieType');
+  const customFacesField = document.getElementById('customFacesField');
+  const customFaces = document.getElementById('customFaces');
+  const diceCount = document.getElementById('diceCount');
+  const minus = document.getElementById('minus');
+  const plus = document.getElementById('plus');
+  const rollBtn = document.getElementById('rollBtn');
+
+  const resultsPanel = document.getElementById('resultsPanel');
+  const diceGrid = document.getElementById('diceGrid');
+  const sumTotal = document.getElementById('sumTotal');
+
+  const raisePanel = document.getElementById('raisePanel');
+  const raiseList = document.getElementById('raiseList');
+  const leftoverNote = document.getElementById('leftoverNote');
+  const raiseCount = document.getElementById('raiseCount');
+
+  dieType.addEventListener('change', () => {
+    customFacesField.style.display = dieType.value === 'custom' ? 'block' : 'none';
+  });
+
+  minus.addEventListener('click', () => {
+    diceCount.value = Math.max(1, parseInt(diceCount.value || '1', 10) - 1);
+  });
+  plus.addEventListener('click', () => {
+    diceCount.value = Math.min(30, parseInt(diceCount.value || '1', 10) + 1);
+  });
+
+  function currentFaces() {
+    if (dieType.value === 'custom') {
+      return Math.max(2, parseInt(customFaces.value || '10', 10));
+    }
+    return parseInt(dieType.value, 10);
+  }
+
+  function rollOne(faces) {
+    return Math.floor(Math.random() * faces) + 1;
+  }
+
+  // Greedy "bin covering" used by the 7th Sea community:
+  // sort ascending, repeatedly take the current highest remaining die
+  // as the seed of a new raise, then add the smallest remaining dice
+  // until the group's total reaches 10 or more.
+  function computeRaises(values) {
+    const idxSorted = values
+      .map((v, i) => ({ v, i }))
+      .sort((a, b) => a.v - b.v);
+
+    let lo = 0;
+    let hi = idxSorted.length - 1;
+    const raises = [];
+    const usedIdx = new Set();
+
+    while (hi >= lo) {
+      const group = [idxSorted[hi]];
+      let sum = idxSorted[hi].v;
+      hi--;
+      while (sum < 10 && lo <= hi) {
+        group.push(idxSorted[lo]);
+        sum += idxSorted[lo].v;
+        lo++;
+      }
+      if (sum >= 10) {
+        group.forEach(g => usedIdx.add(g.i));
+        raises.push({ dice: group.map(g => g.v), total: sum });
+      } else {
+        break;
+      }
+    }
+
+    const leftover = values.filter((_, i) => !usedIdx.has(i));
+    return { raises, leftover };
+  }
+
+  function renderDice(values, faces, usedSet) {
+    diceGrid.innerHTML = '';
+    values.forEach((v, i) => {
+      const d = document.createElement('div');
+      d.className = 'die';
+      if (v === faces) d.classList.add('max');
+      if (usedSet && usedSet.has(i)) d.classList.add('used');
+      d.textContent = v;
+      diceGrid.appendChild(d);
+    });
+  }
+
+  function renderRaises(values) {
+    const { raises, leftover } = computeRaises(values);
+
+    raiseList.innerHTML = '';
+    raises.forEach((r, idx) => {
+      const row = document.createElement('div');
+      row.className = 'raise';
+      row.innerHTML = `
+        <div class="label">Raise ${idx + 1}</div>
+        <div class="dice">${r.dice.map(d => `<span class="chip">${d}</span>`).join('')}</div>
+        <div class="total">= ${r.total}</div>
+      `;
+      raiseList.appendChild(row);
+    });
+
+    if (leftover.length) {
+      leftoverNote.innerHTML = 'Dadi avanzati (non usati): ' +
+        leftover.map(v => `<span class="chip">${v}</span>`).join('');
+    } else {
+      leftoverNote.innerHTML = raises.length ? 'Nessun dado avanzato.' : '';
+    }
+
+    raiseCount.textContent = raises.length;
+    raisePanel.style.display = 'block';
+  }
+
+  rollBtn.addEventListener('click', () => {
+    const faces = currentFaces();
+    const count = Math.min(30, Math.max(1, parseInt(diceCount.value || '1', 10)));
+
+    const values = [];
+    for (let i = 0; i < count; i++) values.push(rollOne(faces));
+
+    const sum = values.reduce((a, b) => a + b, 0);
+
+    sumTotal.textContent = sum;
+    resultsPanel.style.display = 'block';
+    renderDice(values, faces);
+
+    if (faces === 10) {
+      renderRaises(values);
+    } else {
+      raisePanel.style.display = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>
