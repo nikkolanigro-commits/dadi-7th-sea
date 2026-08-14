@@ -54,6 +54,27 @@
     font-family:Arial,Helvetica,sans-serif;
   }
 
+  .sync-status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:0.68rem;
+    color:rgba(237,227,208,0.55);
+    margin-bottom:12px;
+  }
+  .sync-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--green-ok);
+    box-shadow:0 0 6px var(--green-ok);
+  }
+  .sync-dot.offline{
+    background:var(--red-wax);
+    box-shadow:0 0 6px var(--red-wax);
+  }
+
   .panel{
     background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
     border:1px solid rgba(201,162,75,0.25);
@@ -129,7 +150,7 @@
     box-shadow:0 2px 0 rgba(0,0,0,0.25);
   }
   .roll-btn:active{ transform:translateY(1px); box-shadow:none; }
-  .roll-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .roll-btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .results-head{
     display:flex;
@@ -174,8 +195,23 @@
     background:#1c4f6f;
     color:var(--brass-bright);
   }
-  .die.used{
-    opacity:0.55;
+  .die.rolling{
+    animation: dieShake 0.22s ease-in-out infinite;
+    color: rgba(237,227,208,0.55);
+  }
+  .die.settle{
+    animation: diePop 0.32s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes dieShake{
+    0%   { transform: rotate(0deg) scale(1); }
+    25%  { transform: rotate(-9deg) scale(1.04); }
+    75%  { transform: rotate(9deg) scale(1.04); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  @keyframes diePop{
+    0%   { transform: scale(0.7) rotate(0deg); }
+    60%  { transform: scale(1.18) rotate(4deg); }
+    100% { transform: scale(1) rotate(0deg); }
   }
 
   .empty-note{
@@ -257,6 +293,41 @@
     margin-top:8px;
     line-height:1.4;
   }
+
+  /* Shared roll log */
+  .log-list{
+    max-height:220px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .log-entry{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    padding:7px 9px;
+    border-radius:7px;
+    background:rgba(255,255,255,0.03);
+    border-left:3px solid var(--brass);
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .log-entry .who{
+    font-size:0.72rem;
+    font-weight:700;
+    display:flex;
+    justify-content:space-between;
+  }
+  .log-entry .who .time{
+    font-weight:400;
+    color:rgba(237,227,208,0.4);
+  }
+  .log-entry .what{
+    font-size:0.75rem;
+    color:rgba(237,227,208,0.75);
+  }
+  .log-entry .what b{ color:var(--brass-bright); }
+  .log-entry .raises{ color:var(--green-ok); }
 </style>
 </head>
 <body>
@@ -265,6 +336,11 @@
     <h1>⚓ Dadi &amp; Raise</h1>
     <span>7th Sea toolkit</span>
   </header>
+
+  <div class="sync-status">
+    <span class="sync-dot offline" id="syncDot"></span>
+    <span id="syncText">Connessione a Owlbear…</span>
+  </div>
 
   <div class="panel">
     <div class="row">
@@ -320,7 +396,53 @@
     </div>
   </div>
 
-<script>
+  <div class="panel">
+    <div class="results-head">
+      <h2>Cronaca dei tiri (condivisa)</h2>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="empty-note" id="logEmpty">Nessun tiro ancora. I tiri di tutti i giocatori con l'estensione aperta compariranno qui.</div>
+    </div>
+  </div>
+
+<script type="module">
+  // --- Owlbear SDK (loaded from CDN as ES module, no build step needed) ---
+  let OBR = null;
+  let obrAvailable = false;
+  let playerName = "Giocatore";
+  let playerColor = "#C9A24B";
+
+  const BROADCAST_CHANNEL = "rodeo.owlbear.dadi-7th-sea/roll";
+
+  const syncDot = document.getElementById('syncDot');
+  const syncText = document.getElementById('syncText');
+
+  try {
+    const mod = await import("https://esm.run/@owlbear-rodeo/sdk");
+    OBR = mod.default;
+    if (OBR && OBR.isAvailable) {
+      OBR.onReady(async () => {
+        obrAvailable = true;
+        try {
+          playerName = await OBR.player.getName();
+          playerColor = await OBR.player.getColor();
+        } catch (e) { /* keep defaults */ }
+
+        syncDot.classList.remove('offline');
+        syncText.textContent = `Connesso come ${playerName} — i tiri sono condivisi con la stanza`;
+
+        OBR.broadcast.onMessage(BROADCAST_CHANNEL, (event) => {
+          addLogEntry(event.data, false);
+        });
+      });
+    } else {
+      syncText.textContent = "Fuori da Owlbear: registro condiviso non attivo (solo modalità di prova)";
+    }
+  } catch (e) {
+    syncText.textContent = "Fuori da Owlbear: registro condiviso non attivo (solo modalità di prova)";
+  }
+
+  // --- Dice controls ---
   const dieType = document.getElementById('dieType');
   const customFacesField = document.getElementById('customFacesField');
   const customFaces = document.getElementById('customFaces');
@@ -337,6 +459,9 @@
   const raiseList = document.getElementById('raiseList');
   const leftoverNote = document.getElementById('leftoverNote');
   const raiseCount = document.getElementById('raiseCount');
+
+  const logList = document.getElementById('logList');
+  const logEmpty = document.getElementById('logEmpty');
 
   dieType.addEventListener('change', () => {
     customFacesField.style.display = dieType.value === 'custom' ? 'block' : 'none';
@@ -395,18 +520,6 @@
     return { raises, leftover };
   }
 
-  function renderDice(values, faces, usedSet) {
-    diceGrid.innerHTML = '';
-    values.forEach((v, i) => {
-      const d = document.createElement('div');
-      d.className = 'die';
-      if (v === faces) d.classList.add('max');
-      if (usedSet && usedSet.has(i)) d.classList.add('used');
-      d.textContent = v;
-      diceGrid.appendChild(d);
-    });
-  }
-
   function renderRaises(values) {
     const { raises, leftover } = computeRaises(values);
 
@@ -431,9 +544,77 @@
 
     raiseCount.textContent = raises.length;
     raisePanel.style.display = 'block';
+    return raises.length;
   }
 
-  rollBtn.addEventListener('click', () => {
+  function addLogEntry(data, isMine) {
+    logEmpty.style.display = 'none';
+
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.style.borderLeftColor = data.color || 'var(--brass)';
+
+    const time = new Date(data.time || Date.now());
+    const hh = String(time.getHours()).padStart(2, '0');
+    const mm = String(time.getMinutes()).padStart(2, '0');
+
+    const diceStr = data.values.join(', ');
+    const raiseStr = (data.faces === 10 && typeof data.raises === 'number')
+      ? ` <span class="raises">— ${data.raises} Raise</span>`
+      : '';
+
+    entry.innerHTML = `
+      <div class="who">
+        <span>${isMine ? 'Tu' : data.name}${isMine ? ' (tu)' : ''}</span>
+        <span class="time">${hh}:${mm}</span>
+      </div>
+      <div class="what">d${data.faces} × ${data.values.length}: <b>${diceStr}</b> — somma ${data.sum}${raiseStr}</div>
+    `;
+
+    logList.prepend(entry);
+
+    // keep log short
+    while (logList.children.length > 25) {
+      logList.removeChild(logList.lastChild);
+    }
+  }
+
+  function animateRoll(values, faces) {
+    return new Promise((resolve) => {
+      diceGrid.innerHTML = '';
+      const dieEls = values.map(() => {
+        const d = document.createElement('div');
+        d.className = 'die rolling';
+        d.textContent = '?';
+        diceGrid.appendChild(d);
+        return d;
+      });
+
+      const flickerTimers = dieEls.map((el) => {
+        return setInterval(() => {
+          el.textContent = rollOne(faces);
+        }, 55);
+      });
+
+      let settled = 0;
+      dieEls.forEach((el, i) => {
+        const stopAt = 480 + i * 70;
+        setTimeout(() => {
+          clearInterval(flickerTimers[i]);
+          el.classList.remove('rolling');
+          el.textContent = values[i];
+          if (values[i] === faces) el.classList.add('max');
+          el.classList.add('settle');
+          setTimeout(() => el.classList.remove('settle'), 340);
+
+          settled++;
+          if (settled === dieEls.length) resolve();
+        }, stopAt);
+      });
+    });
+  }
+
+  rollBtn.addEventListener('click', async () => {
     const faces = currentFaces();
     const count = Math.min(30, Math.max(1, parseInt(diceCount.value || '1', 10)));
 
@@ -442,15 +623,37 @@
 
     const sum = values.reduce((a, b) => a + b, 0);
 
-    sumTotal.textContent = sum;
+    rollBtn.disabled = true;
     resultsPanel.style.display = 'block';
-    renderDice(values, faces);
+    sumTotal.textContent = sum;
+    raisePanel.style.display = 'none';
 
+    await animateRoll(values, faces);
+
+    let raisesCount = null;
     if (faces === 10) {
-      renderRaises(values);
-    } else {
-      raisePanel.style.display = 'none';
+      raisesCount = renderRaises(values);
     }
+
+    const payload = {
+      name: playerName,
+      color: playerColor,
+      faces,
+      values,
+      sum,
+      raises: raisesCount,
+      time: Date.now()
+    };
+
+    addLogEntry(payload, true);
+
+    if (obrAvailable) {
+      try {
+        await OBR.broadcast.sendMessage(BROADCAST_CHANNEL, payload);
+      } catch (e) { /* ignore broadcast errors */ }
+    }
+
+    rollBtn.disabled = false;
   });
 </script>
 
